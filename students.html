@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students</title>
+</head>
+<body>
+    <h1>Students</h1>
+    <div id="classList"></div>
+    <script>
+        fetch('/students')
+            .then(response => response.json())
+            .then(data => {
+                const classList = document.getElementById('classList');
+                data.forEach(classItem => {
+                    const button = document.createElement('button');
+                    button.innerText = classItem.name;
+                    button.onclick = () => {
+                        window.location.href = `/class/${classItem.id}`;
+                    };
+                    classList.appendChild(button);
+                });
+            });
+    </script>
+</body>
+</html>
