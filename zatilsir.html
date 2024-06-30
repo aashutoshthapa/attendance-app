@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZATIL SIR</title>
+    <title>Zatil Sir - Attendance Management</title>
 </head>
 <body>
-    <h1>ZATIL SIR</h1>
-    <form action="/verify" method="post">
-        <label for="key">Enter Key:</label>
-        <input type="password" id="key" name="key" required>
-        <button type="submit">Verify</button>
+    <h1>Zatil Sir Login</h1>
+    <form id="loginForm">
+        <label for="password">Enter Password:</label>
+        <input type="password" id="password" name="password" required>
+        <button type="submit">Submit</button>
     </form>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+            if (password === 'zatilsirhandsome') {
+                window.location.href = 'create_class.html';
+            } else {
+                alert('Incorrect password');
+            }
+        });
+    </script>
 </body>
 </html>
