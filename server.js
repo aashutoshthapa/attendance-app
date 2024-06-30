@@ -1,65 +1,85 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
-const app = express();
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const db = require('./database');
+
+const hostname = '127.0.0.1';
 const port = 3000;
 
-// Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
-
-// Database setup
-const db = new sqlite3.Database('./attendance.db');
-
-// Create necessary tables
-db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS classes (id INTEGER PRIMARY KEY, name TEXT)");
-    db.run("CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY, name TEXT, class_id INTEGER)");
-    db.run("CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY, student_id INTEGER, date TEXT, status INTEGER)");
-});
-
-// Routes
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
-
-app.post('/verify', (req, res) => {
-    const key = req.body.key;
-    if (key === 'zatilsirhandsome') {
-        res.redirect('/zatilsir');
+const server = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/create-class') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', () => {
+            const { name } = JSON.parse(body);
+            db.run('INSERT INTO classes (name) VALUES (?)', [name], function(err) {
+                if (err) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false }));
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, id: this.lastID }));
+                }
+            });
+        });
+    } else if (req.method === 'GET' && req.url === '/get-classes') {
+        db.all('SELECT name FROM classes', [], (err, rows) => {
+            if (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false }));
+            } else {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ classes: rows.map(row => row.name) }));
+            }
+        });
     } else {
-        res.send('Invalid key');
+        let filePath = '.' + req.url;
+        if (filePath === './') {
+            filePath = './index.html';
+        }
+
+        const extname = path.extname(filePath);
+        let contentType = 'text/html';
+        switch (extname) {
+            case '.js':
+                contentType = 'text/javascript';
+                break;
+            case '.css':
+                contentType = 'text/css';
+                break;
+            case '.json':
+                contentType = 'application/json';
+                break;
+            case '.png':
+                contentType = 'image/png';
+                break;
+            case '.jpg':
+                contentType = 'image/jpg';
+                break;
+            case '.wav':
+                contentType = 'audio/wav';
+                break;
+        }
+
+        fs.readFile(filePath, (err, content) => {
+            if (err) {
+                if (err.code == 'ENOENT') {
+                    res.writeHead(404, { 'Content-Type': 'text/html' });
+                    res.end('<h1>404 Not Found</h1>');
+                } else {
+                    res.writeHead(500);
+                    res.end(`Server Error: ${err.code}`);
+                }
+            } else {
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content, 'utf-8');
+            }
+        });
     }
 });
 
-app.get('/zatilsir', (req, res) => {
-    res.sendFile(__dirname + '/public/zatilsir.html');
-});
-
-app.get('/students', (req, res) => {
-    db.all("SELECT * FROM classes", [], (err, rows) => {
-        res.json(rows);
-    });
-});
-
-app.get('/class/:id', (req, res) => {
-    const classId = req.params.id;
-    db.all("SELECT * FROM students WHERE class_id = ?", [classId], (err, rows) => {
-        res.json(rows);
-    });
-});
-
-app.post('/create-class', (req, res) => {
-    const className = req.body.className;
-    db.run("INSERT INTO classes (name) VALUES (?)", [className], function(err) {
-        if (err) {
-            res.send('Error creating class');
-        } else {
-            res.redirect('/zatilsir');
-        }
-    });
-});
-
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+server.listen(port, hostname, () => {
+    console.log(`Server running at http://${hostname}:${port}/`);
 });
